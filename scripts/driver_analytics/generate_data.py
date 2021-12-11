@@ -1,4 +1,28 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
+####################################################################################################
+"""
+generate_data.py: ...
+"""
+
+__authors__ = (
+    "Nikhil S Hubballi (nikhil.hubballi@gmail.com)",
+)
+__copyright__ = "Copyright 2021, Nikhil Hubballi"
+__credits__ = [
+    "Nikhil S Hubballi",
+]
+__license__ = ""
+__version__ = "0.1.0"
+__first_release__ = "Dec 13, 2021"
+__version_date__ = "Dec 13, 2021"
+__maintainer__ = ("Nikhil S Hubballi")
+__email__ = ("nikhil.hubballi@gmail.com")
+__status__ = "Development"
+__sheet__ = __name__
+
+####################################################################################################
 
 import uuid
 import math
@@ -167,7 +191,7 @@ class GenerateDriverData:
         duration = ((distance / 1000) / 35) * 3600
         return distance, duration
 
-    def deliveries_in_day(self, depot: tuple[float]) -> pd.DataFrame:
+    def deliveries_in_day(self, num_delivery: int, depot: tuple[float]) -> pd.DataFrame:
         """[summary]
 
         Args:
@@ -176,12 +200,6 @@ class GenerateDriverData:
         Returns:
             pd.DataFrame: [description]
         """
-
-        # Get a Random number b/w 0 & 5 with mode=0
-        num_delivery = int(random.triangular(0, 5, 0))
-
-        if num_delivery == 0:
-            return pd.DataFrame()
 
         deliveries = list()
         for n in range(num_delivery):
@@ -240,7 +258,8 @@ class GenerateDriverData:
         return delivery_order
 
     def create_log(self, driver_id: str, timestamp: pd.Timestamp,
-                   flag: str, sp: tuple[float], ep: tuple[float]) -> dict:
+                   flag: str, sp: tuple[float], ep: tuple[float],
+                   time_spent: float) -> dict:
         """[summary]
 
         Args:
@@ -262,6 +281,7 @@ class GenerateDriverData:
             'start_lat': sp[1],
             'end_lon': ep[0],
             'end_lat': ep[1],
+            'time_spent': time_spent
         }
 
         return dlog
@@ -292,7 +312,8 @@ class GenerateDriverData:
         # First Log of the Day - from Depot
         start_point = ddf['start_point'].iloc[0]
         driver_logs.append(
-            self.create_log(driver_id, date, 'b-start', depot, start_point)
+            self.create_log(driver_id, date, 'b-start',
+                            depot, start_point, np.NaN)
         )
 
         # break time should include time for next commute to pickup
@@ -304,7 +325,8 @@ class GenerateDriverData:
         timestamp = date + pd.Timedelta(seconds=break_interval)
 
         driver_logs.append(
-            self.create_log(driver_id, timestamp, 'b-end', depot, start_point)
+            self.create_log(driver_id, timestamp, 'b-end',
+                            depot, start_point, break_interval)
         )
 
         # Loop through delivery assignments for the day
@@ -315,7 +337,7 @@ class GenerateDriverData:
 
             driver_logs.append(
                 self.create_log(driver_id, timestamp, 'picked-up',
-                                start_point, end_point)
+                                start_point, end_point, np.NaN)
             )
 
             # update delivery time based on time for traveling to destination
@@ -324,7 +346,7 @@ class GenerateDriverData:
 
             driver_logs.append(
                 self.create_log(driver_id, timestamp, 'delivered',
-                                start_point, end_point)
+                                start_point, end_point, time_taken)
             )
 
             # check if there is time remaining for breaks in the day
@@ -333,12 +355,12 @@ class GenerateDriverData:
                 # check if there is another delivery in pipeline
                 next_order = (order < len(ddf)-1)
 
-                # CASE - More deliveries in the day
+                # CASE - More deliveries left in the day
                 if next_order:
                     next_start = ddf['start_point'].iloc[order+1]
                     driver_logs.append(
                         self.create_log(driver_id, timestamp, 'b-start',
-                                        end_point, next_start)
+                                        end_point, next_start, np.NaN)
                     )
 
                     # next commute
@@ -351,25 +373,57 @@ class GenerateDriverData:
 
                     driver_logs.append(
                         self.create_log(driver_id, timestamp, 'b-end',
-                                        end_point, next_start)
+                                        end_point, next_start, break_interval)
                     )
                 # CASE - All deliveries done for the day
                 else:
 
                     driver_logs.append(
                         self.create_log(driver_id, timestamp, 'b-start',
-                                        end_point, depot)
+                                        end_point, depot, np.NaN)
                     )
-
+                    ts = timestamp
                     timestamp = date + pd.Timedelta(seconds=time_working)
+                    break_interval = (timestamp - ts).seconds
 
                     driver_logs.append(
                         self.create_log(driver_id, timestamp, 'b-end',
-                                        end_point, depot)
+                                        end_point, depot, break_interval)
                     )
                 # END IF - check remaining deliveries
             # END IF - check remaining break time
         # END FOR LOOP - deliveries for the day
+
+        log_df = pd.DataFrame(driver_logs)
+        return log_df
+
+    def log_free_day(self, driver_id: str,
+                     date: pd.Timestamp, depot: tuple[float]) -> pd.DataFrame:
+        """[summary]
+
+        Args:
+            driver_id (str): [description]
+            date (pd.Timestamp): [description]
+            depot (tuple[float]): [description]
+
+        Returns:
+            pd.DataFrame: [description]
+        """
+        driver_logs = list()
+
+        # First Log of the Day - from Depot
+        driver_logs.append(
+            self.create_log(driver_id, date, 'b-start',
+                            depot, depot, np.NaN)
+        )
+
+        time_working = 10*60*60  # 9AM-7PM, in seconds
+        timestamp = date + pd.Timedelta(seconds=time_working)
+
+        driver_logs.append(
+            self.create_log(driver_id, timestamp, 'b-end',
+                            depot, depot, time_working)
+        )
 
         log_df = pd.DataFrame(driver_logs)
         return log_df
@@ -387,13 +441,18 @@ class GenerateDriverData:
 
         driver_id = row['driver_id']
         depot = row['depot']
+        num_delivery = row['num_delivery']
 
         # Genearate dataframe of Delivery Assignments for day
-        delivery_df = self.deliveries_in_day(depot)
+        if num_delivery > 0:
+            delivery_df = self.deliveries_in_day(num_delivery, depot)
+        else:
+            delivery_df = pd.DataFrame()
 
         # exit if there are no deliveries to make for the date
         if delivery_df.empty:
-            return pd.DataFrame()
+            log_df = self.log_free_day(driver_id, date, depot)
+            return log_df
 
         # Identify the order of delivery assignments based on travel distance
         delivery_order = self.calculate_delivery_order(
@@ -417,7 +476,12 @@ class GenerateDriverData:
             filepath (Path): [description]
         """
 
-        log_dflist = self.drivers_df.apply(
+        ddf = self.drivers_df.copy()
+        ddf['num_delivery'] = random.choices(
+            [0, 1, 2, 3], weights=[70, 20, 5, 5], k=self.num_drivers
+        )
+
+        log_dflist = ddf.apply(
             lambda row: self.loop_drivers(row, date),
             axis=1
         )
