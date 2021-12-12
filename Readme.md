@@ -143,13 +143,32 @@ $ tree -h
 .
 ├── Readme.md
 ├── data
+│   ├── driver_clubs_report_by_date.feather
+│   ├── drivers_breaks_by_date.feather
+│   ├── drivers_delivery_by_date.feather
+│   ├── drivers_delivery_log.feather
+│   ├── drivers_engagement_clubs.feather
+│   ├── drivers_master.feather
 │   └── wip
+│       ├── 2021-08-02.feather
+│       ├── 2021-08-03.feather
+│       ├── .....
+│       ├── .....
+│       ├── .....
+│       ├── .....
+│       ├── 2021-11-26.feather
+│       ├── 2021-11-29.feather
+│       └── 2021-11-30.feather
 ├── environment.txt
 └── scripts
-    ├── driver_analytics
-    │   ├── driver_engagement.py
-    │   └── generate_data.py
-    └── EDA.ipynb
+    ├── EDA.ipynb
+    └── driver_analytics
+        ├── __pycache__
+        │   └── generate_data.cpython-39.pyc
+        ├── driver_engagement.py
+        └── generate_data.py
+
+5 directories, 99 files
 
 5 directories, 6 files
 ```
