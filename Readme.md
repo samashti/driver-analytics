@@ -163,14 +163,10 @@ $ tree -h
 └── scripts
     ├── EDA.ipynb
     └── driver_analytics
-        ├── __pycache__
-        │   └── generate_data.cpython-39.pyc
         ├── driver_engagement.py
         └── generate_data.py
 
 5 directories, 99 files
-
-5 directories, 6 files
 ```
 
 ---
