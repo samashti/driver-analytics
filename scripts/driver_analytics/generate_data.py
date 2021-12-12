@@ -49,16 +49,36 @@ class GenerateDriverData:
     def __init__(self, num_drivers: int, start_date: str, end_date: str,
                  lat: float, lon: float, radius: float,
                  distance_method: str = 'haversine') -> None:
-        """[summary]
+        """ Initialise the Simulation to generate Driver data with the
+        arguments required.
 
         Args:
-            num_drivers (int): [description]
-            start_date (str): [description]
-            end_date (str): [description]
-            lat (float): [description]
-            lon (float): [description]
-            radius (float): [description]
-            distance_method (str, optional): [description]. Defaults to 'haversine'.
+            num_drivers (int): Number of drivers to be used for simulation
+
+            start_date (str): Start date for simulation
+
+            end_date (str): End date for simulation
+
+            lat (float): Central latitude of the ROI
+
+            lon (float): Central longitude of the ROI
+
+            radius (float): Radius to be used to cover the ROI
+
+            distance_method (str, optional): Distance method to be used to 
+                        calculate distance between two latlon pair.
+                        Takes either of 'haversine', 'osrm_api' as inputs.
+
+                        1. Haversine uses the Haversine distance formula to
+                            calculate distance between two points. This is a
+                            geographic distance
+
+                        2. Using OSRM API provides the distance between two
+                            points based on a route via road network using
+                            OSRM's demo server. 
+                            PS: Adds delay to simulation as requests take longer
+
+                        Defaults to 'haversine'.
         """
 
         self.num_drivers = num_drivers
@@ -72,15 +92,18 @@ class GenerateDriverData:
         pass
 
     def generate_latlon(self, lat: float, lon: float, radius: float) -> tuple[float]:
-        """[summary]
+        """Generate a random pair of latitude and longitude within a fixed
+        radius of given latitude, longitude values.
 
         Args:
-            lat (float): [description]
-            lon (float): [description]
-            radius (float): [description]
+            lat (float): Latitude of input point
+
+            lon (float): Longitude of input point
+
+            radius (float): Radius bound to generate a random point
 
         Returns:
-            tuple[float]: [description]
+            tuple[float]: random point with lat, lon as tuple of float values
         """
 
         radius_deg = radius/111300  # radius in degree
@@ -99,13 +122,15 @@ class GenerateDriverData:
         return (x1, y1)
 
     def create_driver_profile(self, depot_locations: list[tuple]) -> dict:
-        """[summary]
+        """Creates a random driver profile with driver id, name, vehicle id
+        by assigning him to any of the given depot locations randomly.
 
         Args:
-            depot_locations (list[tuple]): [description]
+            depot_locations (list[tuple]): list of latlon points on earth
+                        that corresponds to depot locations
 
         Returns:
-            dict: [description]
+            dict: dictionary of driver profile
         """
 
         driver = dict()
@@ -117,20 +142,22 @@ class GenerateDriverData:
 
         return driver
 
-    def pickup_delivery_latlon(self, depot: tuple[float]) -> tuple[float]:
-        """[summary]
+    def pickup_delivery_latlon(self, depot: tuple[float]) -> tuple:
+        """Creates a pickup point and delivery point with respect to the
+        input depot location.
+
+        ! Assumption: Each starting point is randomly chosen within a 10km
+                    radius of depot
+
+        ! Assumption: Each associated end point is randomly chosen within
+                    a radius of 5km from the starting point
 
         Args:
-            depot (tuple[float]): [description]
+            depot (tuple[float]): depot location's latlon as tuple
 
         Returns:
-            tuple[float]: [description]
+            tuple: tuple of starting point and end point for pickup & delivery
         """
-
-        # ! Assumption: Each starting point is randomly chosen within a 10km
-        # ! radius of depot
-        # ! Assumption: Each associated end point is randomly chosen within
-        # ! a radius of 5km from the starting point
 
         # within 10km radius of depot
         start_point = self.generate_latlon(depot[1], depot[0], 10000)
@@ -140,14 +167,18 @@ class GenerateDriverData:
         return start_point, end_point
 
     def osrm_routing_api(self, start: tuple[float], end: tuple[float]) -> tuple[float]:
-        """[summary]
+        """Using the OSRM API hosted on a demo server at router.project-osrm.org
+        the distance between the start and end point can be calculated based
+        on route via road network between two points, along with an estimated
+        time taken
 
         Args:
-            start (tuple[float]): [description]
-            end (tuple[float]): [description]
+            start (tuple[float]): latlon pair as tuple for start point
+
+            end (tuple[float]): latlon pair as tuple for end point
 
         Returns:
-            tuple[float]: [description]
+            tuple[float]: distance and time taken for travel as tuple
         """
 
         BASE_URL = "https://router.project-osrm.org/route/v1/driving"
@@ -157,19 +188,22 @@ class GenerateDriverData:
         r = requests.get(ENDPOINT)
         res = r.json()
         distance = res['routes'][0]['distance']
-        duration = res['routes'][0]['duration']
+        # Assuming a city avg traffic speed of ~35km/h
+        duration = (res['routes'][0]['duration'] * 2)
 
         return distance, duration
 
     def haversine_distance(self, start: tuple[float], end: tuple[float]) -> tuple[float]:
-        """[summary]
+        """Haversine uses the Haversine distance formula to calculate distance
+        between two points. This is a geographic distance between 2 points.
 
         Args:
-            start (tuple[float]): [description]
-            end (tuple[float]): [description]
+            start (tuple[float]): latlon pair as tuple for start point
+
+            end (tuple[float]): latlon pair as tuple for end point
 
         Returns:
-            tuple[float]: [description]
+            tuple[float]: distance and time taken for travel as tuple
         """
 
         lon1, lat1 = start
@@ -192,13 +226,15 @@ class GenerateDriverData:
         return distance, duration
 
     def deliveries_in_day(self, num_delivery: int, depot: tuple[float]) -> pd.DataFrame:
-        """[summary]
+        """Based on the number of deliveries, and the starting depot location,
+        this method creates multiple pickup-delivery location pairs along with
+        an unique id, distance between locations and time taken for delivery.
 
         Args:
-            depot (tuple[float]): [description]
+            depot (tuple[float]): Depot location's latlon pair as tuple
 
         Returns:
-            pd.DataFrame: [description]
+            pd.DataFrame: dataframe consisting of pickup-delivery info for N deliveries
         """
 
         deliveries = list()
@@ -219,14 +255,21 @@ class GenerateDriverData:
 
     def calculate_delivery_order(self, ddf: pd.DataFrame,
                                  depot: tuple[float]) -> list[int]:
-        """[summary]
+        """For deliveries assigned in the day to driver from a depot location,
+        the deliveries ordered so that the driver moves to the first closest
+        pickup point first and deliver it. Next, he would move to the next 
+        closest pickup point for the subsequent delivery and so on, until he
+        completes all deliveries for the day. This method generates the 
+        delivery order list for a given number of pickup-delivery location pairs
+        in a day.
 
         Args:
-            ddf (pd.DataFrame): [description]
-            depot (tuple[float]): [description]
+            ddf (pd.DataFrame): delivery dataframe with pickup-deliver locations
+
+            depot (tuple[float]): depot location from which the driver starts
 
         Returns:
-            list[int]: [description]
+            list[int]: delivery order numbers as list
         """
 
         delivery_order = list()
@@ -260,17 +303,23 @@ class GenerateDriverData:
     def create_log(self, driver_id: str, timestamp: pd.Timestamp,
                    flag: str, sp: tuple[float], ep: tuple[float],
                    time_spent: float) -> dict:
-        """[summary]
+        """Based on the inputs, this method creates a dictionary of log,
+        for the driver.
 
         Args:
-            driver_id (str): [description]
-            timestamp (pd.Timestamp): [description]
-            flag (str): [description]
-            sp (tuple[float]): [description]
-            ep (tuple[float]): [description]
+            driver_id (str): Unique driver id
+
+            timestamp (pd.Timestamp): Logging time
+
+            flag (str): Flag of the task in progress 
+                        (b-start, b-end, picked-up, delivered)
+
+            sp (tuple[float]): latlon of start point as tuple
+
+            ep (tuple[float]): latlon of end point as tuple
 
         Returns:
-            dict: [description]
+            dict: Log as dictionary object
         """
 
         dlog = {
@@ -288,16 +337,24 @@ class GenerateDriverData:
 
     def create_driver_log(self, driver_id: str, date: pd.Timestamp,
                           depot: tuple[float], ddf: pd.DataFrame) -> pd.DataFrame:
-        """[summary]
+        """Simulate a driver's day from the start of his shift at 9AM with day's
+        deliveries in pipeline. In between each delivery, break periods are
+        logged as well. Each log contains, the driver id, timestamp, flag for the
+        task in progress (break, delivery) along with start and end points.
+
+        This method covers all the assumptions mentioned in readme.
 
         Args:
-            driver_id (str): [description]
-            date (pd.Timestamp): [description]
-            depot (tuple[float]): [description]
-            ddf (pd.DataFrame): [description]
+            driver_id (str): Unique Driver ID
+
+            date (pd.Timestamp): Date on which simulation of logging is done
+
+            depot (tuple[float]): Driver's depot location
+
+            ddf (pd.DataFrame): deliveries info for the day
 
         Returns:
-            pd.DataFrame: [description]
+            pd.DataFrame: logs for the day as dataframe
         """
 
         # time for all deliveries in seconds
@@ -399,15 +456,23 @@ class GenerateDriverData:
 
     def log_free_day(self, driver_id: str,
                      date: pd.Timestamp, depot: tuple[float]) -> pd.DataFrame:
-        """[summary]
+        """Simulate a driver's free day from the start of his shift at 9AM with 
+        when there are no deliveries planned for the day. The entire day would
+        be logged under break period. Each log contains, the driver id, timestamp, 
+        flag for the task in progress (break) along with depot as both start 
+        and end points.
+
+        This method covers all the assumptions mentioned in readme.
 
         Args:
-            driver_id (str): [description]
-            date (pd.Timestamp): [description]
-            depot (tuple[float]): [description]
+            driver_id (str): Unique Driver ID
+
+            date (pd.Timestamp): Date on which simulation of logging is done
+
+            depot (tuple[float]): Driver's depot location
 
         Returns:
-            pd.DataFrame: [description]
+            pd.DataFrame: logs for the day as dataframe
         """
         driver_logs = list()
 
@@ -429,14 +494,16 @@ class GenerateDriverData:
         return log_df
 
     def loop_drivers(self, row: pd.Series, date: pd.Timestamp) -> pd.DataFrame:
-        """[summary]
+        """Simulate time logging of breaks and deliveries for all drivers in 
+        consideration using their driver profile on the input date.
 
         Args:
-            row (pd.Series): [description]
-            date (pd.Timestamp): [description]
+            row (pd.Series): driver profile data
+
+            date (pd.Timestamp): Date on which simulation of logging is done
 
         Returns:
-            pd.DataFrame: [description]
+            pd.DataFrame: logs for the day for all drivers as dataframe
         """
 
         driver_id = row['driver_id']
@@ -469,11 +536,14 @@ class GenerateDriverData:
         return log_df
 
     def loop_dates(self, date: pd.Timestamp, filepath: Path) -> None:
-        """[summary]
+        """Simulate time logging of breaks and deliveries for drivers
+        on the input date.
 
         Args:
-            date (pd.Timestamp): [description]
-            filepath (Path): [description]
+            date (pd.Timestamp): Date on which simulation of logging is done
+
+            filepath (Path): folder path where the output file containing logs
+                        for each day is exported.
         """
 
         ddf = self.drivers_df.copy()
@@ -498,17 +568,18 @@ class GenerateDriverData:
         pass
 
     def run(self, filepath: str) -> None:
-        """[summary]
+        """Runs Simulation of generating random drivers profile, assigns depot
+        locations, number of deliveries for all drivers on a given date and
+        logs the times for each day (breaks and deliveries).
 
         Args:
-            filepath (str): [description]
+            filepath (str): folder path where the output files are exported.
         """
 
         # Filepath
         filepath = Path(filepath)
         wip_path = filepath.joinpath('wip')
 
-        # ! ROI - Bangalore area: lat=12.975118, lon=77.592690, radius ~25000m
         # ! Assumption: There are 5 Depot locations serving around the AOI
         # Generate 5 Random locations for depot within ROI
         self.depot_list = [
