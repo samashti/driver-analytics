@@ -1,4 +1,4 @@
-# Driver Analytics
+# Driver Engagement Analytics
 
 Derive driver clubs (driver engagement categories/cohorts) for each driver based on their trips dataset from last 4 months, by generating simulated data.
 
@@ -8,16 +8,15 @@ Derive driver clubs (driver engagement categories/cohorts) for each driver based
 
 - Number of drivers - 1000
 
-- Generate random timestamps (start or end) for each driver (past 4 months) - this end time stamp is a time at which the delivery happened; start is a time stamp at which the parcel was picked up. Can also have a record indicating break-starts and break-ends.
-  Options;
+- Generate random timestamps (start or end) for each driver (past 4 months) - this end time stamp is a time at which the delivery happened; start is a time stamp at which the parcel was picked up. Can also have a record indicating break-starts and break-ends. Options;
 
-      * trip_start
+  - trip_start
 
-      * trip_end
+  - trip_end
 
-      * break_start
+  - break_start
 
-      * break_end
+  - break_end
 
 - Flags possible for each record
 
@@ -122,3 +121,75 @@ Derive driver clubs (driver engagement categories/cohorts) for each driver based
 - Each delivery number for the day for all drivers is randomly generated based on weights of 70, 20, 5 and 5 for 0, 1, 2, 3 deliveries respectively.
 
 - Other parameters such as vehicle capacity, delivery demand and other complex metrics are not considered for simplicity.
+
+---
+
+## Folder structure of the project:
+
+- Follow the `Readme.md` file in the root directory of the project folder.
+
+- `environment.txt` file helps with setting up the project.
+
+- `data/wip` folder will contain all the intermediate driver log files for each date for all drivers.
+
+- And the reports would be saved in the `data` folder.
+
+- Task related scripts are within the `scripts/driver_analytics` folder.
+
+- And, the Jupyter Notebook & HTML for `EDA.ipynb` can be found in the `scripts` folder.
+
+```bash
+$ tree -h
+.
+├── Readme.md
+├── data
+│   └── wip
+├── environment.txt
+└── scripts
+    ├── driver_analytics
+    │   ├── driver_engagement.py
+    │   └── generate_data.py
+    ├── EDA.html
+    └── EDA.ipynb
+
+5 directories, 6 files
+```
+
+---
+
+## Dependencies
+
+Set up the code dependencies by running the following the terminal command.
+
+```bash
+conda create -n driver_analytics python=3.9
+conda activate driver_analytics
+pip install -r environment.txt
+```
+
+---
+
+## Running the Code
+
+To run the simulation and generate the driver analytics engagement report, follow below instructions:
+
+- Open your terminal and change directory to project root directory.
+
+```bash
+cd driver_analytics
+```
+
+- From within the directory, just run the python script `driver_engagement.py`, and all the simulations
+  and reports are generated.
+
+```bash
+python ./scripts/driver_analytics/driver_engagement.py
+```
+
+---
+
+## Author
+
+Nikhil S Hubballi
+
+[Mail](mailto:nikhil.hubballi@gmail.com) | [LinkedIn](https://www.linkedin.com/in/nikhilhubballi/) | [Twitter](https://twitter.com/samashti_)
