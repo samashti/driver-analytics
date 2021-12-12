@@ -31,7 +31,10 @@ from argparse import Namespace
 import pandas as pd
 from tqdm import tqdm
 
-from driver_analytics.generate_data import GenerateDriverData
+from generate_data import GenerateDriverData
+
+import warnings
+warnings.filterwarnings('ignore')
 
 tqdm.pandas()
 
