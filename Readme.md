@@ -136,7 +136,7 @@ Derive driver clubs (driver engagement categories/cohorts) for each driver based
 
 - Task related scripts are within the `scripts/driver_analytics` folder.
 
-- And, the Jupyter Notebook & HTML for `EDA.ipynb` can be found in the `scripts` folder.
+- And, the Jupyter Notebook for `EDA.ipynb` can be found in the `scripts` folder.
 
 ```bash
 $ tree -h
@@ -149,7 +149,6 @@ $ tree -h
     ├── driver_analytics
     │   ├── driver_engagement.py
     │   └── generate_data.py
-    ├── EDA.html
     └── EDA.ipynb
 
 5 directories, 6 files
